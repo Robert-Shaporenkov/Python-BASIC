@@ -146,11 +146,87 @@ class Lexer:
             return Token(TT_FLOAT, float(num_str))
 
 ##################################
+# NODES
+##################################
+
+class NumberNode:
+    def __init__(self, token):
+        self.token = token
+    
+    def __repr__(self):
+        return f"{self.token}"
+
+class BinOpNode:
+    def __init__(self, left_node, op_token, right_node):
+        self.left_node = left_node
+        self.right_node = right_node
+        self.op_token = op_token
+    
+    def __repr__(self):
+        return f"({self.left_node}, {self.op_token}, {self.right_node})"
+       
+##################################
+# PARSER
+##################################
+
+class Parser:
+    def __init__(self, tokens):
+        self.tokens = tokens
+        self.token_idx = -1
+        self.advance()
+
+    def advance(self):
+        self.token_idx += 1
+        if self.token_idx < len(self.tokens):
+            self.current_token = self.tokens[self.token_idx]
+        return self.current_token
+    
+    ##################################
+
+    def parse(self):
+        res = self.expr()
+        return res
+    
+    def factor(self):
+        token = self.current_token
+
+        if token.type in (TT_INT, TT_FLOAT):
+            self.advance()
+            return NumberNode(token)
+
+    def term(self):
+        return self.bin_op(self.factor, (TT_MUL, TT_DIV)) #both term and expr use bin_op()
+
+    def expr(self):
+        return self.bin_op(self.term, (TT_PLUS, TT_MINUS))
+
+    def bin_op(self, func, ops):
+        left = func()
+
+        while self.current_token.type in ops:
+            op_token = self.current_token
+            self.advance()
+            right = func()
+            left = BinOpNode(left, op_token, right)
+        
+        return left
+
+
+##################################
 # RUN
 ##################################
 
 def run(file_name, text):
+    # Generate tokens
     lexer = Lexer(file_name, text)
     tokens, error = lexer.make_tokens()
+    if error:
+        return None, error
 
-    return tokens, error
+
+    # Generate abstract syntax tree(AST)
+    parser = Parser(tokens)
+    ast = parser.parse()
+
+    return ast, None
+
