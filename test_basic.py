@@ -61,6 +61,28 @@ class TestParser(unittest.TestCase):
         self.assertIsNone(ast.error)
         self.assertIsInstance(ast.node, NumberNode)
         self.assertEqual(ast.node.token.value, 123)
+    
+    def test_power_operation(self):
+        """Test parsing of power operation"""
+        lexer = Lexer('<stdin>', '2 ^ 3')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        self.assertIsNone(ast.error)
+        self.assertIsInstance(ast.node, BinOpNode)
+        self.assertEqual(ast.node.op_token.type, TT_POW)
+
+    def test_power_precedence(self):
+        """Test power operation has higher precedence than multiplication"""
+        lexer = Lexer('<stdin>', '2 * 3 ^ 2')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        self.assertIsNone(ast.error)
+        self.assertIsInstance(ast.node, BinOpNode)
+        self.assertEqual(ast.node.op_token.type, TT_MUL)
+        self.assertIsInstance(ast.node.right_node, BinOpNode)
+        self.assertEqual(ast.node.right_node.op_token.type, TT_POW)
 
     def test_binary_operation(self):
         lexer = Lexer('<stdin>', '1 + 2')
@@ -220,6 +242,67 @@ class TestInterpreter(unittest.TestCase):
         result = interpreter.visit(ast.node, context)
         self.assertIsNone(result.error)
         self.assertEqual(result.value.value, 5)
+    
+    def test_power(self):
+        """Test basic power operation"""
+        lexer = Lexer('<stdin>', '2 ^ 3')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        interpreter = Interpreter()
+        context = Context('<program>')
+        result = interpreter.visit(ast.node, context)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.value.value, 8)  # 2³ = 8
+
+    def test_power_with_negative(self):
+        """Test power with negative number"""
+        lexer = Lexer('<stdin>', '-2 ^ 3')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        interpreter = Interpreter()
+        context = Context('<program>')
+        result = interpreter.visit(ast.node, context)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.value.value, -8)  # (-2)³ = -8
+    
+    def test_power_precedence_evaluation(self):
+        """Test power operation precedence in evaluation"""
+        lexer = Lexer('<stdin>', '2 * 3 ^ 2')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        interpreter = Interpreter()
+        context = Context('<program>')
+        result = interpreter.visit(ast.node, context)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.value.value, 18)  # 2 * (3²) = 2 * 9 = 18
+
+    def test_power_with_parentheses(self):
+        """Test power operation with parentheses"""
+        lexer = Lexer('<stdin>', '(2 + 1) ^ 3')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        interpreter = Interpreter()
+        context = Context('<program>')
+        result = interpreter.visit(ast.node, context)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.value.value, 27)  # (2 + 1)³ = 3³ = 27
+
+    def test_power_of_zero(self):
+        """Test number raised to power of zero"""
+        lexer = Lexer('<stdin>', '5 ^ 0')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        interpreter = Interpreter()
+        context = Context('<program>')
+        result = interpreter.visit(ast.node, context)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.value.value, 1)  # Any number ^ 0 = 1
+    
 
 if __name__ == '__main__':
     # Replace the simple unittest.main() with this:
