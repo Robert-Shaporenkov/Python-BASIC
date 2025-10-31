@@ -95,7 +95,7 @@ class Position:
 TT_INT = "INT"
 TT_FLOAT = "FLOAT"
 TT_IDENTIFIER = "IDENTIFIER"
-TT_KEYWORD = "KEYOWRD"
+TT_KEYWORD = "KEYWORD"
 TT_PLUS = "PLUS"
 TT_MINUS = "MINUS"
 TT_MUL = "MUL"
@@ -107,7 +107,7 @@ TT_RPAREN = "RPAREN"
 TT_EOF = "EOF"
 
 KEYWORDS = [
-    "VAR"
+    "var"
 ]
 
 
@@ -215,7 +215,7 @@ class Lexer:
         id_str = ""
         pos_start = self.pos.copy()
 
-        while self.current_char != None and self.current_char in LETTERS_DIGITS + "_":
+        while self.current_char is not None and self.current_char in LETTERS_DIGITS + "_":
             id_str += self.current_char
             self.advance()
         
@@ -388,7 +388,7 @@ class Parser:
     def expr(self):
         res = ParseResult()
 
-        if self.current_token.matches(TT_KEYWORD, "VAR"):
+        if self.current_token.matches(TT_KEYWORD, "var"):
             res.register_advancement()
             self.advance()
 
@@ -420,13 +420,13 @@ class Parser:
         if res.error:
             return res.failure(InvalidSyntaxError(
                 self.current_token.pos_start, self.current_token.pos_end,
-                "Expected 'VAR', int, float, identifier, '+', '-' or '('"
+                "Expected 'var', int, float, identifier, '+', '-' or '('"
             ))
         return res.success(node)
     ################################## 
 
     def bin_op(self, func_a, ops, func_b=None):
-        if func_b == None:
+        if func_b is None:
             func_b = func_a
 
         res = ParseResult()
@@ -545,7 +545,7 @@ class SymbolTable:
 
     def get(self, name):
         value = self.symbols.get(name, None)
-        if value == None and self.parent:
+        if value is None and self.parent:
             return self.parent.get(name)
         return value
     
