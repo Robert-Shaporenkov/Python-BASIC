@@ -463,7 +463,7 @@ class Parser:
             self.advance()
 
             node = res.register(self.comp_expr())
-            if res.errror:
+            if res.error:
                 return res
             return res.success(UnaryOpNode(op_token, node))
         

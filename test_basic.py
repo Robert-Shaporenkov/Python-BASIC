@@ -52,6 +52,48 @@ class TestLexer(unittest.TestCase):
         self.assertEqual(tokens[0].type, TT_LPAREN)
         self.assertEqual(tokens[4].type, TT_RPAREN)
 
+    def test_keywords(self):
+        """Test lexing of keywords"""
+        lexer = Lexer('<stdin>', 'var and or not')
+        tokens, error = lexer.make_tokens()
+        self.assertIsNone(error)
+        self.assertEqual(len(tokens), 5)  # 4 keywords + EOF
+        self.assertEqual(tokens[0].type, TT_KEYWORD)
+        self.assertEqual(tokens[0].value, 'var')
+        self.assertEqual(tokens[1].type, TT_KEYWORD)
+        self.assertEqual(tokens[1].value, 'and')
+        self.assertEqual(tokens[2].type, TT_KEYWORD)
+        self.assertEqual(tokens[2].value, 'or')
+        self.assertEqual(tokens[3].type, TT_KEYWORD)
+        self.assertEqual(tokens[3].value, 'not')
+
+    def test_identifier(self):
+        """Test lexing of identifiers"""
+        lexer = Lexer('<stdin>', 'x y z')
+        tokens, error = lexer.make_tokens()
+        self.assertIsNone(error)
+        self.assertEqual(len(tokens), 4)  # 3 identifiers + EOF
+        self.assertEqual(tokens[0].type, TT_IDENTIFIER)
+        self.assertEqual(tokens[0].value, 'x')
+        self.assertEqual(tokens[1].type, TT_IDENTIFIER)
+        self.assertEqual(tokens[1].value, 'y')
+        self.assertEqual(tokens[2].type, TT_IDENTIFIER)
+        self.assertEqual(tokens[2].value, 'z')
+
+    def test_variable_declaration(self):
+        """Test lexing of variable declaration"""
+        lexer = Lexer('<stdin>', 'var x = 123')
+        tokens, error = lexer.make_tokens()
+        self.assertIsNone(error)
+        self.assertEqual(len(tokens), 5)  # var, identifier, equals, number, EOF
+        self.assertEqual(tokens[0].type, TT_KEYWORD)
+        self.assertEqual(tokens[0].value, 'var')
+        self.assertEqual(tokens[1].type, TT_IDENTIFIER)
+        self.assertEqual(tokens[1].value, 'x')
+        self.assertEqual(tokens[2].type, TT_EQ)
+        self.assertEqual(tokens[3].type, TT_INT)
+        self.assertEqual(tokens[3].value, 123)
+
 class TestParser(unittest.TestCase):
     def test_number(self):
         lexer = Lexer('<stdin>', '123')
@@ -128,6 +170,57 @@ class TestParser(unittest.TestCase):
         self.assertIsNone(ast.error)
         self.assertIsInstance(ast.node, UnaryOpNode)
         self.assertEqual(ast.node.op_token.type, TT_PLUS)
+    
+    def test_var_declaration(self):
+        """Test parsing of variable declaration"""
+        lexer = Lexer('<stdin>', 'var x = 5')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        self.assertIsNone(ast.error)
+        self.assertIsInstance(ast.node, VarAssignNode)
+        self.assertEqual(ast.node.var_name_token.value, 'x')
+
+    def test_var_access(self):
+        """Test parsing of variable access"""
+        lexer = Lexer('<stdin>', 'x')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        self.assertIsNone(ast.error)
+        self.assertIsInstance(ast.node, VarAccessNode)
+
+    def test_logical_and(self):
+        """Test parsing of logical AND operation"""
+        lexer = Lexer('<stdin>', '1 and 0')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        self.assertIsNone(ast.error)
+        self.assertIsInstance(ast.node, BinOpNode)
+        self.assertEqual(ast.node.op_token.type, TT_KEYWORD)
+        self.assertEqual(ast.node.op_token.value, 'and')
+
+    def test_logical_or(self):
+        """Test parsing of logical OR operation"""
+        lexer = Lexer('<stdin>', '1 or 0')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        self.assertIsNone(ast.error)
+        self.assertIsInstance(ast.node, BinOpNode)
+        self.assertEqual(ast.node.op_token.type, TT_KEYWORD)
+        self.assertEqual(ast.node.op_token.value, 'or')
+
+    def test_logical_not(self):
+        """Test parsing of logical NOT operation"""
+        lexer = Lexer('<stdin>', 'not 0')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        self.assertIsNone(ast.error)
+        self.assertIsInstance(ast.node, UnaryOpNode)
+        self.assertEqual(ast.node.op_token.value, 'not')
 
 class TestInterpreter(unittest.TestCase):
     def test_number(self):
@@ -302,6 +395,120 @@ class TestInterpreter(unittest.TestCase):
         result = interpreter.visit(ast.node, context)
         self.assertIsNone(result.error)
         self.assertEqual(result.value.value, 1)  # Any number ^ 0 = 1
+    
+    def test_var_assignment_and_access(self):
+        """Test variable assignment and access"""
+        # First assign the variable
+        lexer = Lexer('<stdin>', 'var x = 42')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        interpreter = Interpreter()
+        context = Context('<program>')
+        context.symbol_table = SymbolTable()
+        result = interpreter.visit(ast.node, context)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.value.value, 42)
+
+        # Then access the variable
+        lexer = Lexer('<stdin>', 'x')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        result = interpreter.visit(ast.node, context)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.value.value, 42)
+
+    def test_undefined_variable(self):
+        """Test accessing undefined variable"""
+        lexer = Lexer('<stdin>', 'y')  # Variable 'y' not defined
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        interpreter = Interpreter()
+        context = Context('<program>')
+        context.symbol_table = SymbolTable()
+        result = interpreter.visit(ast.node, context)
+        self.assertIsNotNone(result.error)
+        self.assertIsInstance(result.error, RTError)
+
+    def test_logical_and_true(self):
+        """Test logical AND with true condition"""
+        lexer = Lexer('<stdin>', '1 and 1')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        interpreter = Interpreter()
+        context = Context('<program>')
+        context.symbol_table = SymbolTable()
+        result = interpreter.visit(ast.node, context)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.value.value, 1)
+
+    def test_logical_and_false(self):
+        """Test logical AND with false condition"""
+        lexer = Lexer('<stdin>', '1 and 0')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        interpreter = Interpreter()
+        context = Context('<program>')
+        context.symbol_table = SymbolTable()
+        result = interpreter.visit(ast.node, context)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.value.value, 0)
+
+    def test_logical_or_true(self):
+        """Test logical OR with true condition"""
+        lexer = Lexer('<stdin>', '1 or 0')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        interpreter = Interpreter()
+        context = Context('<program>')
+        context.symbol_table = SymbolTable()
+        result = interpreter.visit(ast.node, context)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.value.value, 1)
+
+    def test_logical_or_false(self):
+        """Test logical OR with false condition"""
+        lexer = Lexer('<stdin>', '0 or 0')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        interpreter = Interpreter()
+        context = Context('<program>')
+        context.symbol_table = SymbolTable()
+        result = interpreter.visit(ast.node, context)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.value.value, 0)
+
+    def test_logical_not_true(self):
+        """Test logical NOT with true condition"""
+        lexer = Lexer('<stdin>', 'not 0')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        interpreter = Interpreter()
+        context = Context('<program>')
+        context.symbol_table = SymbolTable()
+        result = interpreter.visit(ast.node, context)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.value.value, 1)
+
+    def test_logical_not_false(self):
+        """Test logical NOT with false condition"""
+        lexer = Lexer('<stdin>', 'not 1')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        interpreter = Interpreter()
+        context = Context('<program>')
+        context.symbol_table = SymbolTable()
+        result = interpreter.visit(ast.node, context)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.value.value, 0)
     
 
 if __name__ == '__main__':
