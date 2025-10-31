@@ -1,12 +1,17 @@
-expr   :  KEYWORD:VAR IDENTIFIER EQ expr
-       :  term ((PLUS|MINUS) term)*
+expr            :  KEYWORD:var IDENTIFIER EQ expr
+                :  comp_expr ((KEYWORD:and|KEYWORD:or) comp_expr)*
 
-term   :  factor((MUL|DIV) factor)*
+comp_expr       :  KEYWORD:not comp_expr
+                :  arith_expr ((EE_LT_GT_LTE_GTE) arith_expr)*
+                
+arith_expr      :  term ((PLUS|MINUS) term)*
 
-factor :  (PLUS|MINUS) factor
-       :  power
+term            :  factor((MUL|DIV) factor)*
 
-power  :  atom (POW factor)*
+factor          :  (PLUS|MINUS) factor
+                :  power
 
-atom   :  INT|FLOAT|IDENTIFIER
-       :  LPAREN expr RPAREN
+power           :  atom (POW factor)*
+
+atom            :  INT|FLOAT|IDENTIFIER
+                :  LPAREN expr RPAREN
