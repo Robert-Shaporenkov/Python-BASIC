@@ -1,3 +1,6 @@
+* = 0 or more
+? = optional
+
 expr            :  KEYWORD:var IDENTIFIER EQ expr
                 :  comp_expr ((KEYWORD:and|KEYWORD:or) comp_expr)*
 
@@ -15,3 +18,8 @@ power           :  atom (POW factor)*
 
 atom            :  INT|FLOAT|IDENTIFIER
                 :  LPAREN expr RPAREN
+                :  if_expr
+            
+if_expr         :  KEYOWRD:if expr KEYWORD:then expr
+                   (KEYWORD:elif expr KEYWORD:then expr)*
+                   (KEYWORD:else expr)?
