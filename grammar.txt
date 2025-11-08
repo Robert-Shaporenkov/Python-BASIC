@@ -14,13 +14,16 @@ term            :  factor((MUL|DIV) factor)*
 factor          :  (PLUS|MINUS) factor
                 :  power
 
-power           :  atom (POW factor)*
+power           :  call (POW factor)*
+
+call            :  atom (LPAREN (expr (COMMA expr)*)? RPAREN)?
 
 atom            :  INT|FLOAT|IDENTIFIER
                 :  LPAREN expr RPAREN
                 :  if_expr
                 :  for_expr
                 :  while_expr
+                :  func_def
             
 if_expr         :  KEYWORD:if expr KEYWORD:then expr
                    (KEYWORD:elif expr KEYWORD:then expr)*
@@ -30,3 +33,7 @@ for_expr        :  KEYWORD:for identifier EQ expr KEYWORD:TO expr
                    (KEYWORD:step expr)? KEYWORD:then expr
 
 while_expr      :  KEYWORD:while expr KEYWORD:then expr
+
+func_def        :  KEYWORD:func IDENTIFIER?
+                   LPAREN (IDENTIFIER (COMMA IDENTIFIER)*)? RPAREN
+                   ARROW expr
