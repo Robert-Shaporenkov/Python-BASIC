@@ -338,8 +338,6 @@ class VarAssignNode:
         self.pos_start = self.var_name_token.pos_start
         self.pos_end = self.value_node.pos_end
 
-
-
 class BinOpNode:
     def __init__(self, left_node, op_token, right_node):
         self.left_node = left_node
@@ -825,7 +823,6 @@ class Parser:
             return res.success(CallNode(atom, arg_nodes))
         return res.success(atom)
                 
-    
     def power(self):
         return self.bin_op(self.call, (TT_POW, ), self.factor)
     
@@ -910,6 +907,7 @@ class Parser:
                 "Expected 'var', 'if', 'for', 'while', 'func', int, float, identifier, '+', '-' or '('"
             ))
         return res.success(node)
+    
     ################################## 
 
     def bin_op(self, func_a, ops, func_b=None):
@@ -957,7 +955,6 @@ class RTResult:
 ##################################
 # VALUES
 ##################################
-
 
 class Value:
     def __init__(self):
@@ -1217,7 +1214,6 @@ class SymbolTable:
     def remove(self, name):
         del self.symbols[name]
 
-
 ##################################
 # INTERPRETER
 ##################################
@@ -1264,7 +1260,6 @@ class Interpreter:
         context.symbol_table.set(var_name, value)
         return res.success(value)
         
-
     def visit_BinOpNode(self, node, context):
         res = RTResult()
         left = res.register(self.visit(node.left_node, context))
@@ -1320,8 +1315,6 @@ class Interpreter:
                 result.set_pos(node.pos_start, node.pos_end)
             )
 
-                
-    
     def visit_UnaryOpNode(self, node, context):
         res = RTResult()
         number = res.register(self.visit(node.node, context))
