@@ -255,7 +255,8 @@ class Lexer:
             return Token(TT_INT, int(num_str), pos_start, self.pos)
         else:
             return Token(TT_FLOAT, float(num_str), pos_start, self.pos)
-
+    
+    '''
     def make_string(self):
         string = ""
         pos_start = self.pos.copy()
@@ -280,6 +281,38 @@ class Lexer:
         
         self.advance()
         return Token(TT_STRING, string, pos_start, self.pos)
+    '''
+    def make_string(self):
+        string = ""
+        pos_start = self.pos.copy()
+        self.advance()  # Skip the opening quote
+
+        esc_char = False
+        esc_chars = {
+            "n": "\n",
+            "t": "\t",
+            "\\": "\\",
+            '"': '"'
+        }
+
+        while self.current_char is not None:
+            if esc_char:
+                # Replace escape sequence with actual character
+                string += esc_chars.get(self.current_char, self.current_char)
+                esc_char = False  # Reset after processing escape
+            else:
+                if self.current_char == "\\":
+                    esc_char = True  # Next char is escaped
+                elif self.current_char == '"':
+                    break  # End of string
+                else:
+                    string += self.current_char
+
+            self.advance()
+
+        self.advance()  # Skip closing quote
+        return Token(TT_STRING, string, pos_start, self.pos)
+
     
     def make_identifier(self):
         id_str = ""

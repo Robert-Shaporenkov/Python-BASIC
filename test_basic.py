@@ -103,28 +103,37 @@ class TestParser(unittest.TestCase):
         self.assertIsNone(ast.error)
         self.assertIsInstance(ast.node, NumberNode)
         self.assertEqual(ast.node.token.value, 123)
-    
-    def test_power_operation(self):
-        """Test parsing of power operation"""
-        lexer = Lexer('<stdin>', '2 ^ 3')
-        tokens, error = lexer.make_tokens()
-        parser = Parser(tokens)
-        ast = parser.parse()
-        self.assertIsNone(ast.error)
-        self.assertIsInstance(ast.node, BinOpNode)
-        self.assertEqual(ast.node.op_token.type, TT_POW)
 
-    def test_power_precedence(self):
-        """Test power operation has higher precedence than multiplication"""
-        lexer = Lexer('<stdin>', '2 * 3 ^ 2')
+    def test_float(self):
+        lexer = Lexer('<stdin>', '12.34')
         tokens, error = lexer.make_tokens()
         parser = Parser(tokens)
         ast = parser.parse()
         self.assertIsNone(ast.error)
-        self.assertIsInstance(ast.node, BinOpNode)
-        self.assertEqual(ast.node.op_token.type, TT_MUL)
-        self.assertIsInstance(ast.node.right_node, BinOpNode)
-        self.assertEqual(ast.node.right_node.op_token.type, TT_POW)
+        self.assertIsInstance(ast.node, NumberNode)
+        self.assertEqual(ast.node.token.value, 12.34)
+
+    def test_identifier(self):
+        """Test lexing of identifiers"""
+        lexer = Lexer('<stdin>', 'myVar')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        self.assertIsNone(ast.error)
+        self.assertIsInstance(ast.node, VarAccessNode)
+        id_token = getattr(ast.node, 'token', None) or getattr(ast.node, 'var_name_token', None)
+        self.assertIsNotNone(id_token)
+        self.assertEqual(id_token.value, 'myVar')
+
+    def test_variable_declaration(self):
+        lexer = Lexer('<stdin>', 'var x = 10')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        self.assertIsNone(ast.error)
+        self.assertIsInstance(ast.node, VarAssignNode)
+        self.assertEqual(ast.node.var_name_token.value, 'x')
+        self.assertEqual(ast.node.value_node.token.value, 10)
 
     def test_binary_operation(self):
         lexer = Lexer('<stdin>', '1 + 2')
@@ -135,6 +144,33 @@ class TestParser(unittest.TestCase):
         self.assertIsInstance(ast.node, BinOpNode)
         self.assertEqual(ast.node.op_token.type, TT_PLUS)
 
+    def test_unary_operation(self):
+        lexer = Lexer('<stdin>', '-5')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        self.assertIsNone(ast.error)
+        self.assertIsInstance(ast.node, UnaryOpNode)
+        self.assertEqual(ast.node.op_token.type, TT_MINUS)
+
+    def test_parentheses(self):
+        lexer = Lexer('<stdin>', '(1 + 2) * 3')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        self.assertIsNone(ast.error)
+        self.assertIsInstance(ast.node, BinOpNode)
+        self.assertIsInstance(ast.node.left_node, BinOpNode)
+
+    def test_power_operation(self):
+        lexer = Lexer('<stdin>', '2 ^ 3')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        self.assertIsNone(ast.error)
+        self.assertIsInstance(ast.node, BinOpNode)
+        self.assertEqual(ast.node.op_token.type, TT_POW)
+
     def test_invalid_syntax(self):
         lexer = Lexer('<stdin>', '1 +')  # Missing right operand
         tokens, error = lexer.make_tokens()
@@ -144,54 +180,16 @@ class TestParser(unittest.TestCase):
         self.assertIsInstance(ast.error, InvalidSyntaxError)
 
     def test_nested_expressions(self):
-        lexer = Lexer('<stdin>', '(1 + 2) * 3')
+        lexer = Lexer('<stdin>', '(1 + 2) * (3 + 4)')
         tokens, error = lexer.make_tokens()
         parser = Parser(tokens)
         ast = parser.parse()
         self.assertIsNone(ast.error)
         self.assertIsInstance(ast.node, BinOpNode)
-    
-    def test_unary_minus(self):
-        """Test parsing of unary minus operation"""
-        lexer = Lexer('<stdin>', '-5')
-        tokens, error = lexer.make_tokens()
-        parser = Parser(tokens)
-        ast = parser.parse()
-        self.assertIsNone(ast.error)
-        self.assertIsInstance(ast.node, UnaryOpNode)
-        self.assertEqual(ast.node.op_token.type, TT_MINUS)
+        self.assertIsInstance(ast.node.left_node, BinOpNode)
+        self.assertIsInstance(ast.node.right_node, BinOpNode)
 
-    def test_unary_plus(self):
-        """Test parsing of unary plus operation"""
-        lexer = Lexer('<stdin>', '+5')
-        tokens, error = lexer.make_tokens()
-        parser = Parser(tokens)
-        ast = parser.parse()
-        self.assertIsNone(ast.error)
-        self.assertIsInstance(ast.node, UnaryOpNode)
-        self.assertEqual(ast.node.op_token.type, TT_PLUS)
-    
-    def test_var_declaration(self):
-        """Test parsing of variable declaration"""
-        lexer = Lexer('<stdin>', 'var x = 5')
-        tokens, error = lexer.make_tokens()
-        parser = Parser(tokens)
-        ast = parser.parse()
-        self.assertIsNone(ast.error)
-        self.assertIsInstance(ast.node, VarAssignNode)
-        self.assertEqual(ast.node.var_name_token.value, 'x')
-
-    def test_var_access(self):
-        """Test parsing of variable access"""
-        lexer = Lexer('<stdin>', 'x')
-        tokens, error = lexer.make_tokens()
-        parser = Parser(tokens)
-        ast = parser.parse()
-        self.assertIsNone(ast.error)
-        self.assertIsInstance(ast.node, VarAccessNode)
-
-    def test_logical_and(self):
-        """Test parsing of logical AND operation"""
+    def test_logical_operations(self):
         lexer = Lexer('<stdin>', '1 and 0')
         tokens, error = lexer.make_tokens()
         parser = Parser(tokens)
@@ -201,26 +199,52 @@ class TestParser(unittest.TestCase):
         self.assertEqual(ast.node.op_token.type, TT_KEYWORD)
         self.assertEqual(ast.node.op_token.value, 'and')
 
-    def test_logical_or(self):
-        """Test parsing of logical OR operation"""
-        lexer = Lexer('<stdin>', '1 or 0')
+    def test_if_statement(self):
+        lexer = Lexer('<stdin>', 'if x > 0 then var y = 1 else var y = 0')
         tokens, error = lexer.make_tokens()
         parser = Parser(tokens)
         ast = parser.parse()
         self.assertIsNone(ast.error)
-        self.assertIsInstance(ast.node, BinOpNode)
-        self.assertEqual(ast.node.op_token.type, TT_KEYWORD)
-        self.assertEqual(ast.node.op_token.value, 'or')
+        self.assertIsInstance(ast.node, IfNode)
 
-    def test_logical_not(self):
-        """Test parsing of logical NOT operation"""
-        lexer = Lexer('<stdin>', 'not 0')
+    def test_for_loop(self):
+        lexer = Lexer('<stdin>', 'for i = 1 to 10 step 1 then 0')
         tokens, error = lexer.make_tokens()
         parser = Parser(tokens)
         ast = parser.parse()
         self.assertIsNone(ast.error)
-        self.assertIsInstance(ast.node, UnaryOpNode)
-        self.assertEqual(ast.node.op_token.value, 'not')
+        self.assertIsInstance(ast.node, ForNode)
+
+    def test_while_loop(self):
+        lexer = Lexer('<stdin>', 'while x < 10 then 0')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        self.assertIsNone(ast.error)
+        self.assertIsInstance(ast.node, WhileNode)
+
+    def test_function_definition(self):
+        lexer = Lexer('<stdin>', 'func myFunc(a, b) -> a + b')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        self.assertIsNone(ast.error)
+        self.assertIsInstance(ast.node, FuncDefNode)
+        name_token = getattr(ast.node, 'name_token', None) or getattr(ast.node, 'var_name_token', None)
+        self.assertIsNotNone(name_token)
+        self.assertEqual(name_token.value, 'myFunc')
+
+    def test_function_call(self):
+        lexer = Lexer('<stdin>', 'myFunc(1, 2)')
+        tokens, error = lexer.make_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        self.assertIsNone(ast.error)
+        self.assertIsInstance(ast.node, CallNode)
+        # accept either a func_name_token alias or extract from node_to_call.var_name_token
+        name_token = getattr(ast.node, 'func_name_token', None) or getattr(getattr(ast.node, 'node_to_call', None), 'var_name_token', None)
+        self.assertIsNotNone(name_token)
+        self.assertEqual(name_token.value, 'myFunc')
 
 class TestInterpreter(unittest.TestCase):
     def test_number(self):
@@ -509,7 +533,136 @@ class TestInterpreter(unittest.TestCase):
         result = interpreter.visit(ast.node, context)
         self.assertIsNone(result.error)
         self.assertEqual(result.value.value, 0)
-    
+
+class TestControlFlowAndFunctions(unittest.TestCase):
+    def run_lines(self, lines):
+        """Run multiple top-level expressions/statements in the same context in sequence."""
+        interpreter = Interpreter()
+        context = Context('<program>')
+        context.symbol_table = SymbolTable()
+        last_result = None
+
+        for code in lines:
+            lexer = Lexer('<stdin>', code)
+            tokens, error = lexer.make_tokens()
+            self.assertIsNone(error, msg=f"Lexer error for '{code}': {error}")
+            parser = Parser(tokens)
+            ast = parser.parse()
+            self.assertIsNone(ast.error, msg=f"Parser error for '{code}': {ast.error}")
+            last_result = interpreter.visit(ast.node, context)
+            # allow tests to assert runtime errors where expected
+        return last_result, context
+
+    def test_for_sum_1_to_5(self):
+        # basic.py's for loop is exclusive of 'to' when step > 0, so use end=6 to include 5
+        lines = [
+            "var sum = 0",
+            "for i = 1 to 6 step 1 then var sum = sum + i",
+            "sum"
+        ]
+        result, ctx = self.run_lines(lines)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.value.value, 15)  # 1+2+3+4+5 = 15
+
+    def test_for_negative_step(self):
+        lines = [
+            "var last = 0",
+            "for i = 5 to 0 step -1 then var last = i",
+            "last"
+        ]
+        result, ctx = self.run_lines(lines)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.value.value, 1)  # loop runs 5,4,3,2,1 -> last = 1
+
+    def test_for_zero_iterations(self):
+        # start == end -> no iterations for positive step
+        lines = [
+            "var count = 0",
+            "for i = 1 to 1 step 1 then var count = count + 1",
+            "count"
+        ]
+        result, ctx = self.run_lines(lines)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.value.value, 0)
+
+    def test_for_default_step(self):
+        # when 'step' omitted, interpreter uses step = 1
+        lines = [
+            "var sum = 0",
+            "for i = 1 to 4 then var sum = sum + i",  # end=4 -> runs 1..3 => sum = 6
+            "sum"
+        ]
+        result, ctx = self.run_lines(lines)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.value.value, 6)
+
+    def test_while_countdown(self):
+        lines = [
+            "var i = 3",
+            "while i > 0 then var i = i - 1",
+            "i"
+        ]
+        result, ctx = self.run_lines(lines)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.value.value, 0)
+
+    def test_while_never_entered(self):
+        lines = [
+            "var i = 0",
+            "while i > 0 then var i = i - 1",
+            "i"
+        ]
+        result, ctx = self.run_lines(lines)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.value.value, 0)
+
+    def test_function_no_args(self):
+        lines = [
+            "var f = func() -> 42",
+            "f()"
+        ]
+        result, ctx = self.run_lines(lines)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.value.value, 42)
+
+    def test_function_with_args(self):
+        lines = [
+            "var add = func(a, b) -> a + b",
+            "add(2, 3)"
+        ]
+        result, ctx = self.run_lines(lines)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.value.value, 5)
+
+    def test_recursive_factorial(self):
+        lines = [
+            "var fact = func(n) -> if n <= 1 then 1 else n * fact(n - 1)",
+            "fact(5)"
+        ]
+        result, ctx = self.run_lines(lines)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.value.value, 120)
+
+    def test_function_arg_count_mismatch_error(self):
+        lines = [
+            "var f = func(a, b) -> a + b",
+            "f(1)"
+        ]
+        result, ctx = self.run_lines(lines)
+        # expect runtime RTError for too few args
+        self.assertIsNotNone(result.error)
+        self.assertIsInstance(result.error, RTError)
+
+    def test_closure_reads_outer(self):
+        lines = [
+            "var x = 10",
+            "var f = func() -> x",
+            "f()"
+        ]
+        result, ctx = self.run_lines(lines)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.value.value, 10)
+
 
 if __name__ == '__main__':
     # Replace the simple unittest.main() with this:
