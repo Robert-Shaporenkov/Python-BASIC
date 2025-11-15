@@ -1619,10 +1619,11 @@ class List(Value):
         return copy
     
     def __str__(self):
-        return ', '.join([str(x) for x in self.elements])
-        
+        return f"[{', '.join([repr(x) for x in self.elements])}]"
+
     def __repr__(self):
-        return f"[{', '.join([str(x) for x in self.elements])}]"
+        return self.__str__()
+
 
 ##################################
 # CONTEXT
@@ -1959,4 +1960,5 @@ def run(file_name, text):
     result = interpreter.visit(ast.node, context)
 
     return result.value, result.error
+
 
