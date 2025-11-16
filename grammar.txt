@@ -2,7 +2,12 @@
 + = 1 or more
 ? = optional(0 or 1)
 
-statements      :  NEWLINE* expr (NEWLINE+ expr)* NEWLINE*
+statements      :  NEWLINE* expr (NEWLINE+ statement)* NEWLINE*
+
+statement       :  expr
+                :  KEYWORD:return expr?
+                :  KEYWORD:continue
+                :  KEYWORD:break
 
 expr            :  KEYWORD:var IDENTIFIER EQ expr
                 :  comp_expr ((KEYWORD:and|KEYWORD:or) comp_expr)*
@@ -32,7 +37,7 @@ atom            :  INT|FLOAT|STRING|IDENTIFIER
 list_expr       :  LSQUARE (expr (COMMA expr)*)? RSQUARE
             
 if_expr         :  KEYWORD:if expr KEYWORD:then 
-                   (expr if_expr_b|if_expr_c?)
+                   (statement if_expr_b|if_expr_c?)
                    | (NEWLINE statements KEYWORD:end|if_expr_b|if_expr_c)
 
 if_expr_b       :  KEYWORD:elif expr KEYWORD:then 
@@ -45,11 +50,11 @@ if_expr_c       :  KEYWORD:else
 
 for_expr        :  KEYWORD:for identifier EQ expr KEYWORD:TO expr
                    (KEYWORD:step expr)? KEYWORD:then 
-                   expr
+                   statement
                    |  (NEWLINE statements KEYWORD:end)
 
 while_expr      :  KEYWORD:while expr KEYWORD:then 
-                   expr
+                   statement
                    |  (NEWLINE statements KEYWORD:end)
 
 func_def        :  KEYWORD:func IDENTIFIER?
